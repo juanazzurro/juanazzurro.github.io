@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Mapa interactivo de materias, correlativas y plan de cursada de Ciencia Política (UBA, plan 8558/17).">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231D4ED8'/%3E%3Cpath d='M8 22l6-12 4 8 3-5 3 9' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}*,*::before,*::after{box-sizing:border-box}</style>
+<title>Mapa de Ciencia Política UBA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: plan as a left-to-right map of correlativity steps, with a sticky detail strip and a progress tracker above it */
+:root{
+  --bg:#F2F4F8; --surface:#FFFFFF; --ink:#131A2B; --muted:#5A6377; --line:#D3D9E4; --edge:#B9C2D3;
+  --accent:#1D4ED8; --accent-soft:#E2E9FB;
+  --desc:#8B3DB8; --desc-soft:#F2E7F9;
+  --ok:#17784A; --ok-soft:#DDF1E5;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1320; --surface:#161D2D; --ink:#E6EAF2; --muted:#98A1B6; --line:#29334A; --edge:#3A465F;
+  --accent:#7D9CFF; --accent-soft:#1C2848; --desc:#CB9CEB; --desc-soft:#2D2040; --ok:#5ACB90; --ok-soft:#14301F; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1320; --surface:#161D2D; --ink:#E6EAF2; --muted:#98A1B6; --line:#29334A; --edge:#3A465F;
+  --accent:#7D9CFF; --accent-soft:#1C2848; --desc:#CB9CEB; --desc-soft:#2D2040; --ok:#5ACB90; --ok-soft:#14301F; color-scheme:dark}
+
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:1560px;margin:0 auto;padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{font-family:var(--f-display);font-stretch:85%;text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(28px,4.4vw,46px);font-weight:800;line-height:1.02}
+h2{font-size:24px;font-weight:750}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lede{max-width:68ch;color:var(--muted);margin:10px 0 0}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* progress */
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.stat.total{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.stat.total .lbl,.stat.total b small{color:var(--bg);opacity:.75}
+.stat.total .bar{background:color-mix(in srgb,var(--bg) 25%,transparent)}
+.stat.total .bar i{background:var(--bg)}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.stat b{font-family:var(--f-display);font-size:26px;font-weight:750;font-variant-numeric:tabular-nums;line-height:1}
+.stat b small{font-size:15px;color:var(--muted);font-weight:600}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);width:0;transition:width .3s}
+.stat .lbl{font-size:13px;color:var(--muted)}
+.idi{display:flex;gap:6px}
+.idi button{flex:1;border:1px solid var(--line);background:transparent;border-radius:6px;font-size:12px;padding:3px 0;font-family:var(--f-mono)}
+.idi button[aria-pressed="true"]{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.now{font-size:14px;color:var(--muted)}
+.now strong{color:var(--ink)}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;justify-content:space-between}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted);align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+.ghost{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;font-size:13px}
+.ghost.warn{border-color:var(--desc);color:var(--desc)}
+
+/* detail strip */
+.detail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 6px 20px -14px rgba(10,20,40,.45);display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.6fr) minmax(0,1.3fr) auto;gap:16px;align-items:start}
+.detail.empty{display:block;color:var(--muted);font-size:14px;box-shadow:none}
+.detail h3{font-size:20px;font-weight:750;line-height:1.15}
+.detail .code{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.detail .k{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid transparent;border-radius:999px;padding:2px 10px;font-size:13px;background:var(--accent-soft);color:var(--ink)}
+.chip.d{background:var(--desc-soft)}
+.chip.okc{background:var(--ok-soft);color:var(--ok)}
+.chip.okc::before{content:"✓ "}
+.chip:hover{border-color:var(--ink)}
+.x{border:none;background:transparent;font-size:22px;line-height:1;color:var(--muted);padding:0 4px}
+.note{font-size:13px;color:var(--muted);margin-top:6px}
+
+/* map */
+.mapbox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.canvas{position:relative;display:grid;grid-template-columns:repeat(6,minmax(172px,1fr));column-gap:clamp(34px,3.4vw,56px);padding:22px 24px 28px;min-width:1260px}
+.swipe{display:none;font-size:13px;color:var(--muted);align-items:center;gap:6px}
+@media (max-width:1300px){.swipe{display:flex}}
+.colhead{font-family:var(--f-mono);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.colhead b{display:block;font-family:var(--f-display);font-size:17px;letter-spacing:0;text-transform:none;color:var(--ink);font-weight:700}
+.col{display:flex;flex-direction:column;position:relative;z-index:1}
+.stack{display:flex;flex-direction:column;justify-content:space-around;gap:10px;flex:1}
+svg.edges{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:visible}
+svg.edges path{fill:none;stroke:var(--edge);stroke-width:1.4;transition:opacity .2s,stroke .2s}
+svg.edges path.a{stroke:var(--accent);stroke-width:2.2}
+svg.edges path.d{stroke:var(--desc);stroke-width:2.2}
+svg.edges path.dim{opacity:.15}
+.mk-base{fill:var(--edge)} .mk-a{fill:var(--accent)} .mk-d{fill:var(--desc)}
+
+.card{position:relative;background:var(--surface);border:1.5px solid var(--line);border-radius:9px;padding:9px 38px 9px 11px;text-align:left;width:100%;display:flex;flex-direction:column;gap:3px;transition:opacity .2s,border-color .2s,background .2s}
+.card .c{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.card .n{font-weight:600;font-size:14px;line-height:1.25}
+.card .st{font-size:11.5px;color:var(--muted)}
+.card .tag{align-self:flex-start;font-size:10.5px;font-family:var(--f-mono);letter-spacing:.04em;padding:1px 6px;border-radius:4px;border:1px solid var(--line);color:var(--muted)}
+.card[data-st="av"]{border-color:var(--accent)}
+.card[data-st="av"] .st{color:var(--accent);font-weight:600}
+.card[data-st="ok"]{background:var(--ok-soft);border-color:transparent}
+.card[data-st="ok"] .st{color:var(--ok);font-weight:600}
+.card[data-st="lock"] .n{color:var(--muted)}
+.card.sel{outline:3px solid var(--ink);outline-offset:1px}
+.card.anc{background:var(--accent-soft);border-color:var(--accent)}
+.card.desc{background:var(--desc-soft);border-color:var(--desc)}
+.card.dim{background:var(--surface);border-color:var(--line)}
+.card.dim>*,.cbc.dim>*{opacity:.3}
+.card.dim+.chk{opacity:.3}
+.chk{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);display:grid;place-items:center;padding:0}
+.chk svg{width:13px;height:13px;stroke:var(--surface);stroke-width:3;fill:none}
+.chk[aria-pressed="true"]{background:var(--ok);border-color:var(--ok)}
+.chk:hover{border-color:var(--ok)}
+
+.cbc{background:var(--bg);border:1.5px dashed var(--edge);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px;align-self:center;width:100%}
+.cbc.sel{outline:3px solid var(--ink)} .cbc.anc{border-color:var(--accent);border-style:solid;background:var(--accent-soft)}
+.cbc .hd{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--f-display);font-weight:700;font-size:17px;border:none;background:none;padding:0;text-align:left}
+.cbc .hd span{font-family:var(--f-mono);font-size:11px;color:var(--muted);font-weight:500}
+.cbc label{display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.3;cursor:pointer}
+.cbc input{margin-top:2px;accent-color:var(--ok)}
+
+/* orientations */
+.ori-tabs{display:flex;flex-wrap:wrap;gap:8px}
+.ori-tabs button{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;font-size:14px}
+.ori-tabs button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--surface)}
+.ori{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) minmax(0,1fr);gap:14px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.box h3{font-size:17px;font-weight:700}
+.row{display:flex;gap:10px;align-items:flex-start;font-size:14px;cursor:pointer}
+.row input{margin-top:3px;accent-color:var(--ok);width:16px;height:16px;flex:none}
+.row .c{font-family:var(--f-mono);font-size:11px;color:var(--muted);display:block}
+.pill{align-self:flex-start;font-size:12.5px;font-weight:600;padding:3px 10px;border-radius:999px}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.no{background:var(--desc-soft);color:var(--desc)}
+.linkbtn{border:none;background:none;padding:0;color:var(--accent);text-decoration:underline;text-underline-offset:3px;text-align:left}
+.req{font-size:14px;color:var(--muted)} .req b{color:var(--ink)}
+
+.plan{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.term{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.term.summer{background:transparent;border-style:dashed}
+.term h3{font-size:18px;font-weight:750;display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.term h3 span{font-family:var(--f-mono);font-size:11px;color:var(--muted);font-weight:500}
+.pi{display:flex;flex-direction:column;gap:1px;text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:7px 9px;font-size:13.5px;line-height:1.3;width:100%}
+.pi .c{font-family:var(--f-mono);font-size:10.5px;color:var(--muted)}
+.pi.o{border-style:dashed;border-color:var(--edge)}
+.pi.done{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.pi.done .n{text-decoration:line-through}
+.pi .why{font-size:12px;color:var(--muted)}
+button.pi:hover{border-color:var(--ink)}
+.plannotes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 24px;font-size:13.5px;color:var(--muted);margin:0;padding:0;list-style:none}
+.plannotes b{color:var(--ink)}
+@media (max-width:1000px){.plan{grid-template-columns:repeat(2,minmax(0,1fr))}.plannotes{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:520px){.plan{grid-template-columns:minmax(0,1fr)}}
+footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:6px;max-width:90ch}
+footer a{color:var(--accent)}
+
+@media (max-width:1100px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:900px){
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat.total{grid-column:1/-1}
+  .detail{grid-template-columns:minmax(0,1fr);gap:10px;position:static}
+  .detail .x{position:absolute;top:10px;right:10px}
+  .detail{position:relative}
+  .ori{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Licenciatura en Ciencia Política · FSOC UBA · Plan 8558/17</div>
+    <h1>Mapa de materias y correlativas</h1>
+    <p class="lede">Las 33 materias de la carrera ordenadas por cadena de correlatividades. Tocá una materia para ver qué necesitás antes (azul) y qué te habilita (violeta). Marcá con el círculo las que ya aprobaste y el mapa te muestra qué podés cursar.</p>
+  </header>
+
+  <section class="stats" aria-label="Tu progreso">
+    <div class="stat"><span class="lbl">CBC</span><b id="sCbc">0<small>/6</small></b><div class="bar"><i id="bCbc"></i></div></div>
+    <div class="stat"><span class="lbl">Ciclo General</span><b id="sGen">0<small>/22</small></b><div class="bar"><i id="bGen"></i></div></div>
+    <div class="stat"><span class="lbl">Ciclo Orientado</span><b id="sOri">0<small>/5</small></b><div class="bar"><i id="bOri"></i></div></div>
+    <div class="stat"><span class="lbl">Idioma · examen global</span><b id="sIdi">0<small>/3 niveles</small></b><div class="idi" id="idi"></div></div>
+    <div class="stat total"><span class="lbl">Carrera completa</span><b id="sTot">0<small>/33</small></b><div class="bar"><i id="bTot"></i></div></div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <div>
+      <div class="eyebrow">Mi plan · Orientación Opinión Pública · 14 materias restantes</div>
+      <h2>De acá al título: 1er cuatrimestre 2028</h2>
+    </div>
+    <div class="plan" id="plan"></div>
+    <ul class="plannotes">
+      <li><b>Opinión Pública es la llave.</b> Abre todo el Ciclo Orientado (ya tenés más de 12 del Ciclo General). Tenela aprobada antes de anotarte al 2C 2027.</li>
+      <li><b>Ciencia de Datos solo se da en el 1er cuatrimestre</b> y pide OP aprobada, así que el 1C 2028 es el primero posible. Solo apareció en 2026: si no se repite, va otro seminario.</li>
+      <li><b>Comodines de verano:</b> APP y Teoría de las RRII se dieron en verano 2025 y 2026. Las electivas y el taller de OP nunca. El idioma va por examen global, fuera de esta grilla.</li>
+    </ul>
+  </section>
+
+  <div class="toolbar">
+    <div class="now" id="now"></div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--ok-soft);border:1px solid var(--ok)"></i>Aprobada</span>
+      <span><i class="sw" style="border:1.5px solid var(--accent)"></i>Podés cursarla</span>
+      <span><i class="sw" style="background:var(--accent-soft);border:1.5px solid var(--accent)"></i>Necesitás antes</span>
+      <span><i class="sw" style="background:var(--desc-soft);border:1.5px solid var(--desc)"></i>Te habilita</span>
+      <button class="ghost" id="reset" type="button" title="Deshace los cambios y vuelve a las materias aprobadas a octubre 2026">Volver a octubre 2026</button>
+    </div>
+  </div>
+
+  <div class="detail empty" id="detail">Tocá cualquier materia del mapa para ver sus correlativas.</div>
+
+  <div class="swipe" aria-hidden="true">← Deslizá el mapa hacia los costados →</div>
+  <div class="mapbox"><div class="canvas" id="canvas"><svg class="edges" id="edges"></svg></div></div>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <div>
+      <div class="eyebrow">Ciclo Orientado · 5 materias</div>
+      <h2>Elegí tu orientación</h2>
+      <p class="lede">Son 2 electivas (de las 3 de tu orientación), 1 taller y 2 seminarios libres. Para cursarlas necesitás 12 materias del Ciclo General aprobadas, incluida la materia cabecera de la orientación.</p>
+    </div>
+    <div class="ori-tabs" id="oriTabs" role="group" aria-label="Orientaciones"></div>
+    <div class="ori" id="ori"></div>
+  </section>
+
+  <footer>
+    <div>Fuentes: listado de materias y códigos de <a href="https://cienciapolitica.sociales.uba.ar/home/estudiantes/info-academica/" target="_blank" rel="noopener">Información académica</a> (oferta 2º cuatrimestre 2026). Correlatividades y electivas tomadas del <a href="https://cienciapolitica.sociales.uba.ar/wp-content/uploads/sites/6/2016/11/reforma-plan-2016-Versi%C3%B3n-Martes-1-11-1.pdf" target="_blank" rel="noopener">Proyecto de actualización del plan de estudios</a> publicado por la Carrera, que dio origen al plan 8558/17.</div>
+    <div>Antes de inscribirte, confirmalo en la <a href="http://cienciapolitica.sociales.uba.ar/wp-content/uploads/sites/6/2019/04/PLAN-NUEVO-DE-CP-8558-17.pdf" target="_blank" rel="noopener">Resolución del Consejo Superior</a> o en SIU Guaraní: el proyecto llamaba “Metodología del Análisis Político” a las dos Metodologías, y algunas electivas (Economía de gobierno, Pensamiento político argentino) no figuran en la oferta actual. Los cambios que marques se guardan en este navegador; en un dispositivo nuevo la página arranca con lo aprobado a octubre 2026.</div>
+  </footer>
+</div>
+
+<script>
+const CBC=[["ipc","Introducción al Pensamiento Científico"],["icse","Introducción al Conocimiento de la Sociedad y el Estado"],["cpc","Ciencia Política"],["socc","Sociología"],["ecoc","Economía"],["antro","Antropología"]];
+const G={
+ tps1:{n:"Teoría Política y Social I",c:"552",r:["cbc"]},
+ fcp1:{n:"Fundamentos de Ciencia Política I",c:"5606",r:["cbc"]},
+ fym:{n:"Filosofía y Métodos de las Ciencias Sociales",c:"554",r:["cbc"]},
+ hc:{n:"Historia Contemporánea",c:"556",r:["cbc"]},
+ hl:{n:"Historia Latinoamericana",c:"559",r:["cbc"]},
+ ha:{n:"Historia Argentina",c:"561",r:["cbc"]},
+ eco:{n:"Economía",c:"551",r:["cbc"]},
+ tdc:{n:"Teoría y Derecho Constitucional",c:"560",r:["cbc"]},
+ tps2:{n:"Teoría Política y Social II",c:"557",r:["tps1"]},
+ tsoc:{n:"Teoría Sociológica",c:"564",r:["tps1"]},
+ fcp2:{n:"Fundamentos de Ciencia Política II",c:"5512",r:["fcp1"]},
+ met1:{n:"Metodología de la Investigación en Ciencia Política I",c:"5503",r:["fym"]},
+ filo:{n:"Filosofía",c:"558",r:["fym"]},
+ tpc:{n:"Teoría Política Contemporánea",c:"562",r:["hc","tps1","tps2","tsoc"]},
+ socp:{n:"Sociología Política",c:"563",r:["hc","fcp1","fcp2"]},
+ met2:{n:"Metodología de la Investigación en Ciencia Política II",c:"5511",r:["fym","met1"]},
+ tri:{n:"Teoría de las Relaciones Internacionales",c:"584",r:["fym","met1","met2","hc","tps1","tps2","tsoc","tpc","fcp1"]},
+ op:{n:"Opinión Pública",c:"580",r:["fym","met1","met2","hc","tps1","tps2","tsoc","fcp1","socp"]},
+ app:{n:"Administración y Políticas Públicas",c:"583",r:["fym","met1","met2","eco","hc","tps1","tps2","tsoc","tpc","fcp2","socp"]},
+ spc:{n:"Sistemas Políticos Comparados",c:"565",r:["fym","met1","met2","hc","fcp1","fcp2","socp"]},
+ pl:{n:"Política Latinoamericana",c:"5514",r:["fym","met1","met2","hc","hl","fcp1","fcp2","socp"]},
+ parg:{n:"Política Argentina",c:"5513",r:["hc","ha","fcp1","fcp2","socp","spc"]}
+};
+const COLS=[["cbc"],["tps1","fcp1","fym","hc","hl","ha","eco","tdc"],["tps2","tsoc","fcp2","met1","filo"],["tpc","socp","met2"],["tri","op","app","spc","pl"],["parg"]];
+const HEADS=[["Ciclo Básico Común","Punto de partida"],["Escalón 1","Piden el CBC completo"],["Escalón 2","1 materia en cadena"],["Escalón 3","2 en cadena"],["Escalón 4","Cabeceras de orientación"],["Escalón 5","La más larga"]];
+const ORI=[
+ {k:"EAYPP",n:"Estado, Administración y Políticas Públicas",cab:"app",el:[["5518","Estado y derecho"],["—","Economía de gobierno"],["5515","Gobierno local"]],t:["5540","Taller Estado, administración y políticas públicas"]},
+ {k:"PC",n:"Política Comparada",cab:"spc",el:[["5519","Elecciones y partidos políticos"],["5520","Política subnacional"],["5510","Instituciones políticas y procesos gubernamentales"]],t:["5541","Taller Política comparada"]},
+ {k:"PL",n:"Política Latinoamericana",cab:"pl",el:[["—","Pensamiento político argentino"],["5521","Liderazgo político en América Latina"],["5522","Regímenes políticos en América Latina"]],t:["5542","Taller Política latinoamericana"]},
+ {k:"RRII",n:"Relaciones Internacionales",cab:"tri",el:[["5524","Defensa y seguridad internacional"],["5525","Globalización, regionalización e integración regional"],["5517","Problemas de política internacional"]],t:["5543","Taller Relaciones internacionales"]},
+ {k:"OP",n:"Opinión Pública y Análisis Político",cab:"op",el:[["5526","Comunicación y discurso político"],["5527","Comportamiento político y electoral"],["5528","Metodología de análisis en opinión pública"]],t:["5544","Taller Opinión pública"]},
+ {k:"TP",n:"Teoría Política",cab:"tpc",el:[["5529","Teorías sobre el poder"],["5530","Teorías sobre la ideología"],["5531","Teorías de la acción colectiva"]],t:["5545","Taller Teoría y filosofía política"]}
+];
+const CAB={};ORI.forEach(o=>CAB[o.cab]=o);
+const name=id=>id==="cbc"?"CBC completo":G[id].n;
+
+// graph helpers
+const ancMemo={};
+function anc(id){if(id==="cbc")return new Set();if(ancMemo[id])return ancMemo[id];const s=new Set();G[id].r.forEach(u=>{s.add(u);anc(u).forEach(x=>s.add(x))});return ancMemo[id]=s}
+const kids={cbc:[]};Object.keys(G).forEach(k=>kids[k]=[]);
+Object.entries(G).forEach(([v,o])=>o.r.forEach(u=>kids[u].push(v)));
+function desc(id){const s=new Set(),q=[...kids[id]];while(q.length){const x=q.shift();if(!s.has(x)){s.add(x);q.push(...kids[x])}}return s}
+const EDGES=[];
+Object.entries(G).forEach(([v,o])=>o.r.forEach(u=>{if(!o.r.some(w=>w!==u&&anc(w).has(u)))EDGES.push([u,v])}));
+
+// state
+const KEY="cp-uba-mapa-v1";
+// default = progreso a octubre 2026, así se ve igual en cualquier dispositivo
+const DEF=()=>({ap:["ipc","icse","cpc","socc","ecoc","antro","tps1","fcp1","fym","hc","ha","eco","tps2","tsoc","fcp2","met1","tpc","socp","met2"],ori:"OP",od:[],idi:[]});
+let S=DEF();
+try{const raw=localStorage.getItem(KEY);if(raw)S=Object.assign(S,JSON.parse(raw))}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const has=id=>id==="cbc"?CBC.every(([k])=>S.ap.includes(k)):S.ap.includes(id);
+function toggle(id){S.ap=S.ap.includes(id)?S.ap.filter(x=>x!==id):[...S.ap,id];save();refresh()}
+let sel=null;
+
+// build map
+const canvas=document.getElementById("canvas"),svg=document.getElementById("edges");
+const check='<svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
+COLS.forEach((ids,i)=>{
+  const col=document.createElement("div");col.className="col";
+  col.innerHTML=`<div class="colhead">${HEADS[i][1]}<b>${HEADS[i][0]}</b></div><div class="stack"></div>`;
+  const st=col.querySelector(".stack");
+  ids.forEach(id=>{
+    if(id==="cbc"){
+      const b=document.createElement("div");b.className="cbc";b.id="n-cbc";
+      b.innerHTML=`<button class="hd" type="button" data-sel="cbc">CBC <span>6 materias</span></button>`+CBC.map(([k,n])=>`<label><input type="checkbox" id="cb-${k}" data-k="${k}"> ${n}</label>`).join("");
+      st.appendChild(b);
+    }else{
+      const o=G[id];const w=document.createElement("div");w.style.position="relative";
+      w.innerHTML=`<button class="card" type="button" id="n-${id}" data-sel="${id}"><span class="c">${o.c}</span><span class="n">${o.n}</span>${CAB[id]?`<span class="tag">Cabecera ${CAB[id].k}</span>`:""}<span class="st"></span></button><button class="chk" type="button" data-chk="${id}" aria-label="Marcar ${o.n} como aprobada" aria-pressed="false">${check}</button>`;
+      st.appendChild(w);
+    }
+  });
+  canvas.appendChild(col);
+});
+canvas.addEventListener("click",e=>{
+  const c=e.target.closest("[data-chk]");if(c){toggle(c.dataset.chk);return}
+  const s=e.target.closest("[data-sel]");if(s){select(s.dataset.sel===sel?null:s.dataset.sel)}
+});
+canvas.addEventListener("change",e=>{if(e.target.dataset.k)toggle(e.target.dataset.k)});
+
+function drawEdges(){
+  const cr=canvas.getBoundingClientRect();
+  svg.setAttribute("width",canvas.scrollWidth);svg.setAttribute("height",canvas.scrollHeight);
+  let h=`<defs>${["base","a","d"].map(m=>`<marker id="m-${m}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="mk-${m}" d="M0 0L8 4L0 8z"/></marker>`).join("")}</defs>`;
+  EDGES.forEach(([u,v])=>{
+    const a=document.getElementById("n-"+u).getBoundingClientRect(),b=document.getElementById("n-"+v).getBoundingClientRect();
+    const x1=a.right-cr.left,y1=a.top+a.height/2-cr.top,x2=b.left-cr.left-2,y2=b.top+b.height/2-cr.top,dx=Math.max(30,(x2-x1)*.45);
+    h+=`<path data-e="${u}>${v}" d="M${x1} ${y1}C${x1+dx} ${y1},${x2-dx} ${y2},${x2} ${y2}" marker-end="url(#m-base)"/>`;
+  });
+  svg.innerHTML=h;paintSel();
+}
+
+function paintSel(){
+  const A=sel?(sel==="cbc"?new Set():anc(sel)):null,D=sel?desc(sel):null;
+  document.querySelectorAll(".card,.cbc").forEach(el=>{
+    const id=el.id.slice(2);el.classList.remove("sel","anc","desc","dim");
+    if(!sel)return;
+    if(id===sel)el.classList.add("sel");else if(A.has(id))el.classList.add("anc");else if(D.has(id))el.classList.add("desc");else el.classList.add("dim");
+  });
+  svg.querySelectorAll("path[data-e]").forEach(p=>{
+    const [u,v]=p.dataset.e.split(">");p.classList.remove("a","d","dim");let m="base";
+    if(sel){const inA=x=>x===sel||A.has(x),inD=x=>x===sel||D.has(x);
+      if(inA(u)&&inA(v)){p.classList.add("a");m="a"}else if(inD(u)&&inD(v)){p.classList.add("d");m="d"}else p.classList.add("dim")}
+    p.setAttribute("marker-end",`url(#m-${m})`);
+  });
+  renderDetail();
+}
+function select(id){sel=id;paintSel()}
+
+const det=document.getElementById("detail");
+function chip(id,cls){return `<button type="button" class="chip ${cls}${has(id)?" okc":""}" data-go="${id}">${name(id)}</button>`}
+function renderDetail(){
+  if(!sel){det.className="detail empty";det.innerHTML="Tocá cualquier materia del mapa para ver sus correlativas.";return}
+  det.className="detail";
+  if(sel==="cbc"){
+    det.innerHTML=`<div><div class="code">Ciclo Básico Común</div><h3>CBC completo</h3><div class="note">${CBC.filter(([k])=>S.ap.includes(k)).length}/6 aprobadas</div></div><div><div class="k">Correlativas</div><div class="note">Ninguna. Es el inicio de la carrera.</div></div><div><div class="k">Te habilita directamente</div><div class="chips">${kids.cbc.map(k=>chip(k,"d")).join("")}</div></div><button class="x" type="button" aria-label="Cerrar" data-close>×</button>`;
+    return}
+  const o=G[sel],A=anc(sel),D=desc(sel),pend=o.r.filter(x=>!has(x));
+  const cab=CAB[sel]?`<div class="note">Cabecera de la orientación <b>${CAB[sel].n}</b>: con ella y 12 materias del Ciclo General abrís el Ciclo Orientado.</div>`:"";
+  det.innerHTML=`<div><div class="code">Código ${o.c}</div><h3>${o.n}</h3><div class="note">${has(sel)?"Aprobada":pend.length?`Te faltan ${pend.length} correlativa${pend.length>1?"s":""}`:"Podés cursarla"}</div></div>
+  <div><div class="k">Correlativas según el plan (${o.r.length})</div><div class="chips">${o.r.map(k=>chip(k,"")).join("")}</div><div class="note">En cadena completa necesitás ${[...A].filter(x=>x!=="cbc").length} materias del Ciclo General antes.</div></div>
+  <div><div class="k">Te habilita directamente</div>${kids[sel].length?`<div class="chips">${kids[sel].map(k=>chip(k,"d")).join("")}</div>`:`<div class="note">Ninguna materia del Ciclo General.</div>`}${D.size>kids[sel].length?`<div class="note">En total desbloquea ${D.size} materias.</div>`:""}${cab}</div>
+  <button class="x" type="button" aria-label="Cerrar" data-close>×</button>`;
+}
+det.addEventListener("click",e=>{if(e.target.closest("[data-close]"))select(null);const g=e.target.closest("[data-go]");if(g){select(g.dataset.go);document.getElementById("n-"+g.dataset.go).scrollIntoView({block:"nearest",inline:"center",behavior:"smooth"})}});
+
+// orientation
+const tabs=document.getElementById("oriTabs"),oriEl=document.getElementById("ori");
+tabs.innerHTML=ORI.map(o=>`<button type="button" data-o="${o.k}" title="${o.n}">${o.n}</button>`).join("");
+tabs.addEventListener("click",e=>{const b=e.target.closest("[data-o]");if(b){S.ori=b.dataset.o;save();refresh()}});
+oriEl.addEventListener("change",e=>{const k=e.target.dataset.od;if(!k)return;S.od=e.target.checked?[...S.od,k]:S.od.filter(x=>x!==k);save();refresh()});
+oriEl.addEventListener("click",e=>{const g=e.target.closest("[data-go]");if(g){select(g.dataset.go);document.getElementById("n-"+g.dataset.go).scrollIntoView({block:"center",inline:"center",behavior:"smooth"})}});
+function oriCount(o){const el=o.el.filter((_,i)=>S.od.includes(o.k+"-e"+i)).length;return Math.min(2,el)+(S.od.includes(o.k+"-t")?1:0)+(S.od.includes("sem1")?1:0)+(S.od.includes("sem2")?1:0)}
+function renderOri(gen){
+  const o=ORI.find(x=>x.k===S.ori)||ORI[0];
+  tabs.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.o===o.k));
+  const ok=gen>=12&&has(o.cab);
+  const r=(id,c,n)=>`<label class="row"><input type="checkbox" id="od-${id}" data-od="${id}" ${S.od.includes(id)?"checked":""}><span><span class="c">${c}</span>${n}</span></label>`;
+  const nEl=o.el.filter((_,i)=>S.od.includes(o.k+"-e"+i)).length;
+  oriEl.innerHTML=`<div class="box"><h3>Requisitos</h3><span class="pill ${ok?"ok":"no"}">${ok?"Habilitado":"Todavía no habilitado"}</span>
+   <div class="req">Ciclo General aprobado: <b>${gen}/12</b></div>
+   <div class="req">Cabecera: <button type="button" class="linkbtn" data-go="${o.cab}">${G[o.cab].n}</button> ${has(o.cab)?"<b>✓ aprobada</b>":"(pendiente)"}</div></div>
+  <div class="box"><h3>Electivas · elegí 2 de 3 <span class="req">(${nEl}/2)</span></h3>${o.el.map((e,i)=>r(o.k+"-e"+i,e[0]==="—"?"sin oferta reciente":e[0],e[1])).join("")}</div>
+  <div class="box"><h3>Taller y seminarios</h3>${r(o.k+"-t",o.t[0],o.t[1])}${r("sem1",o.k==="OP"?"12631 · Seminario 1":"Libre",o.k==="OP"?"Ciencia de Datos para Politólogas/os":"Seminario 1")}${r("sem2","Libre","Seminario 2")}<div class="note">Los seminarios se eligen libremente entre los que ofrece la Carrera, sin importar la orientación.</div></div>`;
+}
+
+// plan
+const PLAN=[
+ {t:"Verano 2027",s:1,i:[{id:"hl",w:"Destraba Política Latinoamericana"}]},
+ {t:"1C 2027",i:[{id:"op",w:"Cabecera: abre el Ciclo Orientado"},{id:"spc",w:"Correlativa de Política Argentina"},{id:"pl"},{id:"filo",w:"O Derecho Constitucional"}]},
+ {t:"2C 2027",i:[{o:"OP-e2",c:"5528 · Electiva OP",n:"Metodología de análisis en opinión pública"},{id:"parg"},{id:"tri"},{id:"tdc",w:"O Filosofía"}]},
+ {t:"Verano 2028",s:1,i:[{id:"app",w:"Se dio en verano 2025 y 2026"}]},
+ {t:"1C 2028",i:[{o:"sem1",c:"12631 · Seminario",n:"Ciencia de Datos para Politólogas/os"},{o:"OP-e0",c:"Electiva OP",n:"Comunicación y discurso político",w:"O Comportamiento político y electoral"},{o:"OP-t",c:"5544 · Taller",n:"Taller Opinión pública"},{o:"sem2",c:"Seminario libre",n:"2º seminario"}]}
+];
+const planEl=document.getElementById("plan");
+function renderPlan(){
+  planEl.innerHTML=PLAN.map(p=>{
+    const items=p.i.map(x=>{
+      if(x.id){const d=has(x.id);return `<button type="button" class="pi${d?" done":""}" data-go="${x.id}"><span class="c">${G[x.id].c}${CAB[x.id]?" · Cabecera "+CAB[x.id].k:""}</span><span class="n">${G[x.id].n}</span>${x.w?`<span class="why">${x.w}</span>`:""}</button>`}
+      const d=S.od.includes(x.o);return `<div class="pi o${d?" done":""}"><span class="c">${x.c}</span><span class="n">${x.n}</span>${x.w?`<span class="why">${x.w}</span>`:""}</div>`;
+    }).join("");
+    return `<div class="term${p.s?" summer":""}"><h3>${p.t}<span>${p.i.length} materia${p.i.length>1?"s":""}</span></h3>${items}</div>`;
+  }).join("");
+}
+planEl.addEventListener("click",e=>{const g=e.target.closest("[data-go]");if(g){select(g.dataset.go);document.getElementById("n-"+g.dataset.go).scrollIntoView({block:"center",inline:"center",behavior:"smooth"})}});
+
+// refresh all status
+function refresh(){
+  const cbcN=CBC.filter(([k])=>S.ap.includes(k)).length;
+  CBC.forEach(([k])=>{const i=document.getElementById("cb-"+k);if(i)i.checked=S.ap.includes(k)});
+  const gen=Object.keys(G).filter(k=>S.ap.includes(k)).length;
+  const avail=[];
+  Object.keys(G).forEach(id=>{
+    const el=document.getElementById("n-"+id),ok=S.ap.includes(id),can=G[id].r.every(has);
+    const st=ok?"ok":can?"av":"lock";if(st==="av")avail.push(id);
+    el.dataset.st=st;el.querySelector(".st").textContent=ok?"Aprobada":can?"Podés cursarla":`Faltan ${G[id].r.filter(x=>!has(x)).length} correlativa${G[id].r.filter(x=>!has(x)).length>1?"s":""}`;
+    const c=document.querySelector(`[data-chk="${id}"]`);c.setAttribute("aria-pressed",ok);
+  });
+  const o=ORI.find(x=>x.k===S.ori)||ORI[0],oc=oriCount(o);
+  set("sCbc",cbcN,6,"bCbc");set("sGen",gen,22,"bGen");set("sOri",oc,5,"bOri");
+  set("sTot",cbcN+gen+oc,33,"bTot");
+  document.getElementById("sIdi").innerHTML=`${S.idi.length}<small>/3 niveles</small>`;
+  document.getElementById("idi").innerHTML=[1,2,3].map(n=>`<button type="button" data-idi="${n}" aria-pressed="${S.idi.includes(n)}" aria-label="Nivel ${n} de idioma">N${n}</button>`).join("");
+  const now=document.getElementById("now");
+  now.innerHTML=avail.length?`Podés cursar ahora: <strong>${avail.map(k=>G[k].n).join(", ")}</strong>`:(gen===22?"<strong>Ciclo General completo.</strong>":cbcN<6?`Marcá las materias del CBC para ver qué podés cursar.`:"");
+  renderOri(gen);renderPlan();drawEdges();
+}
+function set(id,n,t,bar){document.getElementById(id).innerHTML=`${n}<small>/${t}</small>`;document.getElementById(bar).style.width=(n/t*100)+"%"}
+document.getElementById("idi").addEventListener("click",e=>{const b=e.target.closest("[data-idi]");if(!b)return;const n=+b.dataset.idi;S.idi=S.idi.includes(n)?S.idi.filter(x=>x!==n):[...S.idi,n];save();refresh()});
+
+// reset with inline confirm
+const rs=document.getElementById("reset");let armed=null;
+rs.addEventListener("click",()=>{
+  if(!armed){rs.textContent="¿Seguro? Tocá de nuevo";rs.classList.add("warn");armed=setTimeout(()=>{armed=null;rs.textContent="Volver a octubre 2026";rs.classList.remove("warn")},3500);return}
+  clearTimeout(armed);armed=null;rs.textContent="Volver a octubre 2026";rs.classList.remove("warn");
+  S=DEF();save();refresh();
+});
+
+refresh();
+drawEdges();
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(drawEdges);
+new ResizeObserver(()=>drawEdges()).observe(canvas);
+</script>
+
+</body>
+</html>
