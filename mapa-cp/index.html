@@ -194,7 +194,7 @@ footer a{color:var(--accent)}
     <ul class="plannotes">
       <li><b>Opinión Pública es la llave.</b> Abre todo el Ciclo Orientado (ya tenés más de 12 del Ciclo General). Tenela aprobada antes de anotarte al 2C 2027.</li>
       <li><b>Ciencia de Datos solo se da en el 1er cuatrimestre</b> y pide OP aprobada, así que el 1C 2028 es el primero posible. Solo apareció en 2026: si no se repite, va otro seminario.</li>
-      <li><b>Verano 2027 confirmado:</b> Sistemas Políticos Comparados está en la oferta de Guaraní; Historia Latinoamericana no, por eso pasa al 1C 2027. Para el verano 2028, APP y Teoría de las RRII se vienen dando todos los años. El idioma va por examen global.</li>
+      <li><b>Veranos sin apuestas:</b> SPC está confirmada para 2027; Historia Latinoamericana y APP no se ofrecen, así que van en cuatrimestre. En 2028 va un seminario (hay varios cada verano) o, si no te sirve ninguno, Teoría de las RRII, que se dio en 2025, 2026 y 2027. El idioma va por examen global.</li>
     </ul>
   </section>
 
@@ -385,9 +385,9 @@ function renderOri(gen){
 const PLAN=[
  {t:"Verano 2027",s:1,i:[{id:"spc",w:"Leiras-Saguir · lun y jue. Destraba Política Argentina"}]},
  {t:"1C 2027",i:[{id:"op",w:"Cabecera: abre el Ciclo Orientado"},{id:"hl",w:"No se da en verano 2027"},{id:"parg",w:"Ya con SPC aprobada"},{id:"filo",w:"O Derecho Constitucional"}]},
- {t:"2C 2027",i:[{o:"OP-e2",c:"5528 · Electiva OP",n:"Metodología de análisis en opinión pública"},{id:"pl",w:"Pide Historia Latinoamericana"},{id:"tri"},{id:"tdc",w:"O Filosofía"}]},
- {t:"Verano 2028",s:1,i:[{id:"app",w:"Se dio en verano 2025 y 2026"}]},
- {t:"1C 2028",i:[{o:"sem1",c:"12631 · Seminario",n:"Ciencia de Datos para Politólogas/os"},{o:"OP-e0",c:"Electiva OP",n:"Comunicación y discurso político",w:"O Comportamiento político y electoral"},{o:"OP-t",c:"5544 · Taller",n:"Taller Opinión pública"},{o:"sem2",c:"Seminario libre",n:"2º seminario"}]}
+ {t:"2C 2027",i:[{o:"OP-e2",c:"5528 · Electiva OP",n:"Metodología de análisis en opinión pública"},{id:"pl",w:"Pide Historia Latinoamericana"},{id:"app",w:"Sin depender del verano"},{id:"tdc",w:"O Filosofía"}]},
+ {t:"Verano 2028",s:1,i:[{o:"sem2",c:"Seminario libre",n:"2º seminario",w:"Hay varios todos los veranos. Plan B: Teoría de las RRII"}]},
+ {t:"1C 2028",i:[{o:"sem1",c:"12631 · Seminario",n:"Ciencia de Datos para Politólogas/os"},{o:"OP-e0",c:"Electiva OP",n:"Comunicación y discurso político",w:"O Comportamiento político y electoral"},{o:"OP-t",c:"5544 · Taller",n:"Taller Opinión pública"},{id:"tri",w:"O el 2º seminario, si RRII va en verano"}]}
 ];
 const planEl=document.getElementById("plan");
 function renderPlan(){
