@@ -104,6 +104,29 @@ test("worker: usa el modelo, lee skill/ y entiende sus formatos de respuesta", a
     assert.equal(r.body.result, "Hola");
     assert.equal((await call(new Error("daily neuron limit exceeded"))).status, 429);
     assert.equal((await call({ response: "x" }, "https://otro.com")).status, 403);
+    assert.equal(r.body.model, undefined, "no expone detalles internos");
+    const err = await call(new Error("internal account 123 failure"));
+    assert.equal(err.status, 502);
+    assert.ok(!JSON.stringify(err.body).includes("123"), "no filtra el error interno");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("worker: rechaza pedidos sin Origin, sin JSON y aplica límite por IP", async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("Instrucciones.");
+  const env = { AI: { run: async () => ({ response: "OK" }) } };
+  const req = (headers, body = JSON.stringify({ text: "Hola" })) => new Request("https://w", { method: "POST", headers, body });
+  try {
+    assert.equal((await worker.fetch(req({ "content-type": "application/json" }), env)).status, 403);
+    assert.equal((await worker.fetch(req({ Origin: "https://juanazzurro.github.io", "content-type": "text/plain" }), env)).status, 415);
+    const h = { Origin: "https://juanazzurro.github.io", "content-type": "application/json", "CF-Connecting-IP": "9.9.9.9" };
+    const codes = [];
+    for (let i = 0; i < 17; i++) codes.push((await worker.fetch(req(h), env)).status);
+    assert.deepEqual([codes[0], codes[14], codes[15]], [200, 200, 429]);
+    const r = await worker.fetch(req(h), env);
+    assert.equal(r.headers.get("x-content-type-options"), "nosniff");
   } finally {
     globalThis.fetch = realFetch;
   }
