@@ -6,10 +6,13 @@ Corrige solo errores de ortografía y gramática en copys. Si no hay errores, re
 
 ## Cómo funciona
 
-1. **IA** ([Pollinations](https://pollinations.ai), gratis y sin clave) corrige siguiendo las instrucciones de `skill/`.
-2. Si la IA está ocupada o falla, se usa un **corrector básico** ([LanguageTool](https://languagetool.org), basado en reglas).
+1. **Modelo abierto `gpt-oss-120b` en Cloudflare Workers AI** (principal). La página le manda el texto a `worker/worker.js`, desplegado en https://corrector.juanazzurro2.workers.dev. El Worker no usa claves: accede al modelo con el binding `AI`, y lee las instrucciones de `skill/` publicadas en este sitio. Uso gratuito diario: 10.000 "neurons" (cientos de correcciones).
+2. Si el modelo principal falla, **IA de respaldo** ([Pollinations](https://pollinations.ai), gratis y sin clave, una corrección cada 45 s por conexión, con cuenta regresiva).
+3. Si esa también falla, **corrector básico** ([LanguageTool](https://languagetool.org), basado en reglas).
 
-La IA gratuita permite **una corrección cada 45 segundos por conexión a internet** (personas en la misma red de oficina comparten ese turno). Mientras tanto, la página muestra una cuenta regresiva, reintenta sola y ofrece usar el corrector básico sin esperar.
+### Actualizar el Worker
+
+Si cambiás `worker/worker.js`, copiá su contenido en Cloudflare → Workers & Pages → `corrector` → Edit code → Deploy. Para cambiar solo las instrucciones no hace falta: el Worker las lee de `skill/` (con 5 minutos de caché).
 
 ## Estructura
 
@@ -30,8 +33,10 @@ corrector/
 │   ├── result.js              Interpreta y valida la respuesta de la IA
 │   ├── errors.js              Tipos de error
 │   └── providers/
-│       ├── pollinations.js    IA
+│       ├── cloudflare.js      Modelo principal (gpt-oss)
+│       ├── pollinations.js    IA de respaldo
 │       └── languagetool.js    Corrector básico
+├── worker/worker.js           Intermediario en Cloudflare Workers AI
 └── tests/unit.test.mjs        Tests
 ```
 
@@ -41,7 +46,8 @@ Sin dependencias ni paso de compilación: son módulos JavaScript nativos que Gi
 
 - **Qué corrige y cómo:** editá `skill/SKILL.md`. La página lo lee en cada visita, así que alcanza con guardar y subir el cambio.
 - **Formato de la respuesta:** `skill/formato-respuesta.md`.
-- **Modelo, límites o servicios:** `js/config.js`.
+- **Modelo:** lista `MODELS` en `worker/worker.js`.
+- **Servicios y límites de la página:** `js/config.js`.
 
 ## Probar localmente
 

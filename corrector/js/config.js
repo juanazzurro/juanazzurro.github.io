@@ -11,7 +11,7 @@ export const CONFIG = {
     // Principal: modelo abierto (gpt-oss-120b) en Cloudflare Workers AI, vía corrector/worker/worker.js.
     cloudflare: {
       label: "IA (gpt-oss)",
-      url: "",
+      url: "https://corrector.juanazzurro2.workers.dev/",
       timeoutMs: 45000,
     },
     // Respaldo: IA gratuita y sin clave. Límite anónimo: ~1 respuesta cada 45 s por IP.
