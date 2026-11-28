@@ -83,7 +83,7 @@ export default {
 };
 
 /** Devuelve el texto de la respuesta, sea cual sea el formato del modelo. */
-export function extractText(out) {
+function extractText(out) {
   if (!out) return "";
   if (typeof out === "string") return out.trim();
   if (typeof out.response === "string") return out.response.trim();
@@ -101,7 +101,7 @@ export function extractText(out) {
   return "";
 }
 
-export function stripFrontmatter(md) {
+function stripFrontmatter(md) {
   return md.replace(/^﻿?---\r?\n[\s\S]*?\r?\n---\r?\n?/, "").trim();
 }
 

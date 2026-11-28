@@ -72,7 +72,7 @@ test("Pollinations: OK, corrección, límite y respuestas inválidas", async () 
 });
 
 import { correctWithCloudflare } from "../js/providers/cloudflare.js";
-import { extractText, stripFrontmatter as workerStrip } from "../worker/worker.js";
+import worker from "../worker/worker.js";
 
 test("Cloudflare: OK, corrección, límite diario y error", async () => {
   const cf = { url: "https://w", timeoutMs: 1000 };
@@ -84,13 +84,27 @@ test("Cloudflare: OK, corrección, límite diario y error", async () => {
   await assert.rejects(correctWithCloudflare("x", { cfg: { url: "" } }), ProviderError);
 });
 
-test("worker.extractText entiende los formatos de respuesta de Workers AI", () => {
-  assert.equal(extractText({ response: " Hola " }), "Hola");
-  assert.equal(extractText({ choices: [{ message: { content: "Hola" } }] }), "Hola");
-  assert.equal(
-    extractText({ output: [{ type: "reasoning", content: [] }, { type: "message", content: [{ type: "output_text", text: "Hola" }] }] }),
-    "Hola"
-  );
-  assert.equal(extractText(null), "");
-  assert.equal(workerStrip("---\na: b\n---\nX"), "X");
+test("worker: usa el modelo, lee skill/ y entiende sus formatos de respuesta", async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => new Response(url.endsWith("SKILL.md") ? "---\nname: x\n---\nCorregí." : "Formato.");
+  const site = "https://juanazzurro.github.io";
+  const call = async (aiOut, origin = site) => {
+    let seen;
+    const env = { AI: { run: async (model, input) => { seen = input; if (aiOut instanceof Error) throw aiOut; return aiOut; } } };
+    const req = new Request("https://w", { method: "POST", headers: { Origin: origin, "content-type": "application/json" }, body: JSON.stringify({ text: "El parke." }) });
+    const res = await worker.fetch(req, env, {});
+    return { status: res.status, body: await res.json(), seen };
+  };
+  try {
+    let r = await call({ response: " El parque. " });
+    assert.equal(r.body.result, "El parque.");
+    assert.equal(r.seen.messages[0].content, "Corregí.\n\nFormato.");
+    assert.equal((await call({ choices: [{ message: { content: "OK" } }] })).body.result, "OK");
+    r = await call({ output: [{ type: "reasoning", content: [] }, { type: "message", content: [{ type: "output_text", text: "Hola" }] }] });
+    assert.equal(r.body.result, "Hola");
+    assert.equal((await call(new Error("daily neuron limit exceeded"))).status, 429);
+    assert.equal((await call({ response: "x" }, "https://otro.com")).status, 403);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 });
