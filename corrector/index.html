@@ -30,7 +30,7 @@
 
     <footer>
       Las correcciones son automáticas y pueden tener errores: revisalas antes de publicar.<br>
-      Funciona con <a href="https://pollinations.ai">Pollinations</a> (IA) y <a href="https://languagetool.org">LanguageTool</a> (corrector básico).
+      Modelo abierto gpt-oss en <a href="https://developers.cloudflare.com/workers-ai/">Cloudflare Workers AI</a>. Respaldo: <a href="https://pollinations.ai">Pollinations</a> y <a href="https://languagetool.org">LanguageTool</a>.
     </footer>
   </main>
 
@@ -54,7 +54,7 @@
 
   <template id="tpl-wait">
     <div class="wait">
-      <p>⏳ La IA gratuita permite una corrección cada 45 segundos. Corrijo automáticamente en <strong data-role="seconds"></strong> s.</p>
+      <p>⏳ El modelo principal no está disponible y la IA de respaldo permite una corrección cada 45 segundos. Corrijo automáticamente en <strong data-role="seconds"></strong> s.</p>
       <div class="bar">
         <button type="button" data-action="basic">Usar corrector básico ahora</button>
         <button type="button" data-action="cancel">Cancelar</button>

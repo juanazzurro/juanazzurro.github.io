@@ -70,3 +70,27 @@ test("Pollinations: OK, corrección, límite y respuestas inválidas", async () 
   const chatty = { choices: [{ message: { content: "Claro, con gusto te ayudo a corregir este texto. Aquí está la versión revisada." } }] };
   await assert.rejects(correctWithPollinations("El parke.", opts(json(200, chatty))), ProviderError);
 });
+
+import { correctWithCloudflare } from "../js/providers/cloudflare.js";
+import { extractText, stripFrontmatter as workerStrip } from "../worker/worker.js";
+
+test("Cloudflare: OK, corrección, límite diario y error", async () => {
+  const cf = { url: "https://w", timeoutMs: 1000 };
+  const opts = (fetchFn) => ({ cfg: cf, fetchFn });
+  assert.equal(await correctWithCloudflare("El parque.", opts(json(200, { result: "OK" }))), "OK");
+  assert.equal(await correctWithCloudflare("El parke.", opts(json(200, { result: "El parque." }))), "El parque.");
+  await assert.rejects(correctWithCloudflare("x", opts(json(429, { error: "límite" }))), RateLimitError);
+  await assert.rejects(correctWithCloudflare("x", opts(json(502, { error: "caído" }))), ProviderError);
+  await assert.rejects(correctWithCloudflare("x", { cfg: { url: "" } }), ProviderError);
+});
+
+test("worker.extractText entiende los formatos de respuesta de Workers AI", () => {
+  assert.equal(extractText({ response: " Hola " }), "Hola");
+  assert.equal(extractText({ choices: [{ message: { content: "Hola" } }] }), "Hola");
+  assert.equal(
+    extractText({ output: [{ type: "reasoning", content: [] }, { type: "message", content: [{ type: "output_text", text: "Hola" }] }] }),
+    "Hola"
+  );
+  assert.equal(extractText(null), "");
+  assert.equal(workerStrip("---\na: b\n---\nX"), "X");
+});

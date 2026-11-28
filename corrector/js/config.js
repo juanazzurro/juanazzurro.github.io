@@ -8,9 +8,15 @@ export const CONFIG = {
   maxChars: 5000,
 
   providers: {
-    // IA gratuita y sin clave. Límite anónimo: ~1 respuesta cada 45 s por IP.
+    // Principal: modelo abierto (gpt-oss-120b) en Cloudflare Workers AI, vía corrector/worker/worker.js.
+    cloudflare: {
+      label: "IA (gpt-oss)",
+      url: "",
+      timeoutMs: 45000,
+    },
+    // Respaldo: IA gratuita y sin clave. Límite anónimo: ~1 respuesta cada 45 s por IP.
     pollinations: {
-      label: "IA",
+      label: "IA de respaldo",
       url: "https://text.pollinations.ai/openai",
       model: "openai",
       timeoutMs: 45000,
